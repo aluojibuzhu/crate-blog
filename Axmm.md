@@ -11,7 +11,12 @@ axmm模块是ArceOS的虚拟内存管理模块，主要基于axalloc模块和[pa
     │   ├── linear.rs
     │   └── mod.rs
     └── lib.rs
+    
 ```
+
+代码结构概览：
+
+![drawio](D:\Typora\存档\OS\drawio.png)
 
 ## 核心数据结构
 
@@ -77,7 +82,6 @@ let va_to_pa = |va: VirtAddr| PhysAddr::from(va.as_usize() - pa_va_offset);
   
   ```
 
-  
 + unmap_linear：解映射
 
 ### alloc分配映射：由global_allocator提供映射到的物理页帧
