@@ -16,7 +16,7 @@ axmm模块是ArceOS的虚拟内存管理模块，主要基于axalloc模块和[pa
 
 代码结构概览：
 
-![drawio](D:\Typora\存档\OS\drawio.png)
+![drawio](https://github.com/aluojibuzhu/crate-blog/blob/main/picture/drawio.png)
 
 ## 核心数据结构
 
