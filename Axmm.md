@@ -2,15 +2,16 @@
 
 axmm模块是ArceOS的虚拟内存管理模块，主要基于axalloc模块和[page_table_multiarch](https://github.com/arceos-org/page_table_multiarch)crate实现了地址空间隔离，可以对虚拟内存地址空间进行管理，包括创建、映射、解除映射、读写数据等操作。
 
+```
 ├── Cargo.toml
 └── src
     ├── aspace.rs
     ├── backend
-    │    ├── alloc.rs
-    │    ├── linear.rs
-    │    └── mod.rs
+    │   ├── alloc.rs
+    │   ├── linear.rs
+    │   └── mod.rs
     └── lib.rs
-
+```
 
 ## 核心数据结构
 
@@ -50,6 +51,33 @@ let va_to_pa = |va: VirtAddr| PhysAddr::from(va.as_usize() - pa_va_offset);
 主要方法：
 
 + map_linear：根据地址偏移va_to_pa将物理页帧线性的映射到虚拟地址空间
+
+  ```rust
+  pub(crate) fn map_linear(
+          &self,
+          start: VirtAddr,
+          size: usize,
+          flags: MappingFlags,
+          pt: &mut PageTable,
+          pa_va_offset: usize,
+      ) -> bool {
+          let va_to_pa = |va: VirtAddr| PhysAddr::from(va.as_usize() - pa_va_offset);
+          debug!(
+              "map_linear: [{:#x}, {:#x}) -> [{:#x}, {:#x}) {:?}",
+              start,
+              start + size,
+              va_to_pa(start),
+              va_to_pa(start + size),
+              flags
+          );
+          pt.map_region(start, va_to_pa, size, flags, false, false)
+              .map(|tlb| tlb.ignore()) // TLB flush on map is unnecessary, as there are no outdated mappings.
+              .is_ok()
+      }
+  
+  ```
+
+  
 + unmap_linear：解映射
 
 ### alloc分配映射：由global_allocator提供映射到的物理页帧
@@ -58,9 +86,50 @@ let va_to_pa = |va: VirtAddr| PhysAddr::from(va.as_usize() - pa_va_offset);
 
 主要方法：    
 
-+  map_alloc：根据populate决定是为虚地址分配实际物理页帧还是映射空项
++ map_alloc：根据populate决定是为虚地址分配实际物理页帧还是映射空项
+
+  ```rust
+  pub(crate) fn map_alloc(
+          &self,
+          start: VirtAddr,
+          size: usize,
+          flags: MappingFlags,
+          pt: &mut PageTable,
+          populate: bool,
+      ) -> bool {
+          debug!(
+              "map_alloc: [{:#x}, {:#x}) {:?} (populate={})",
+              start,
+              start + size,
+              flags,
+              populate
+          );
+          if populate {
+              // allocate all possible physical frames for populated mapping.
+              for addr in PageIter4K::new(start, start + size).unwrap() {
+                  if let Some(frame) = alloc_frame(true) {
+                      if let Ok(tlb) = pt.map(addr, frame, PageSize::Size4K, flags) {
+                          tlb.ignore(); // TLB flush on map is unnecessary, as there are no outdated mappings.
+                      } else {
+                          return false;
+                      }
+                  }
+              }
+              true
+          } else {
+              // Map to a empty entry for on-demand mapping.
+              let flags = MappingFlags::empty();
+              pt.map_region(start, |_| 0.into(), size, flags, false, false)
+                  .map(|tlb| tlb.ignore())
+                  .is_ok()
+          }
+      }
+  ```
+
+  
 
 + unmap_alloc：解映射
+
 + handle_page_fault_alloc:懒惰地分配物理页帧到故障地址
 
 ### Backend不同映射方法的分发处理
