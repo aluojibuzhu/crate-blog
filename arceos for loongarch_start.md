@@ -44,7 +44,14 @@ DMWIN1 窗口（CSR 0x181）
 DMW0~3窗口实际对应的物理地址是多少？
 
  ##### 二、设置boot栈
+ ```rust
+static mut BOOT_STACK: [u8; BOOT_STACK_SIZE] = [0; BOOT_STACK_SIZE];
 
+        # Setup Stack
+        la.global   $sp, {boot_stack}
+        li.d        $t0, {boot_stack_size}
+        add.d       $sp, $sp, $t0       # setup boot stack
+```
 ##### 三、创建boot页表初始化MMU
 
 
@@ -70,9 +77,4 @@ pub unsafe fn write_kernel_page_table(root_paddr: PhysAddr) {
 
 
 
-| hvisor                                          | axvisor |
-| :---------------------------------------------- | ------- |
-| rust_main/install_trap_vector<br />注册异常处理 |         |
-|                                                 |         |
-|                                                 |         |
 
