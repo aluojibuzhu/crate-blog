@@ -55,7 +55,7 @@
   - join 返回 Result<T,E>；避免在工作线程执行非法地址访问；worker 返回值与主线程断言一致。
 - 可扩展：多线程读不同偏移；并发场景下的只读共享访问压力测试。
 
-#### u_5_0 协作式多任务（yield）
+#### u_5_0 协作式多任务
 
 - 目标：用 thread::yield_now 演示协作式调度下的任务交替。
 - 关键接口：std::thread；Arc<SpinNoIrq<VecDeque<usize>>>；yield_now；join。
@@ -66,7 +66,7 @@
   - 若生产者不 yield，协作式下其它线程难以运行；自旋锁仅用于短临界区，避免长时间持锁。
 - 可扩展：换成带条件等待的同步原语（信号量/condvar）消除忙等。
 
-#### u_6_0 可抢占多任务（不开主动 yield）
+#### u_6_0 可抢占多任务
 
 - 目标：演示系统启用抢占后，即使生产者不 yield，消费者也能运行（被抢占）。
 - 关键接口：ax_println!；thread::current().id()；Arc<SpinNoIrq<VecDeque<_>>>；仅在空队列时 yield。
@@ -77,11 +77,11 @@
   - 要确保内核已开启抢占；长临界区会降低可抢占性；日志 IO 会影响时序观感。
 - 可扩展：扩大临界区或加入计算负载测调度延迟；统计队列滞留时长。
 
-#### u_7_0 块设备（virtio-blk）访问【基于文件头推断】
+#### u_7_0 块设备（virtio-blk）访问
 
 - 目标：初始化驱动栈，发现块设备并读取首块验证。
 - 关键接口：axdriver::prelude::{DeviceType, BaseDriverOps, BlockDriverOps}。
-- 可能的执行流程（参考常见样例）：
+- 可能的执行流程：
   - init_drivers → 列举 DeviceType::Block 的设备 → 校验 size/block_size（常量 DISK_SIZE=64MiB）→ 读取 LBA0 → 打印头部字节或签名。
 - 现象/验证：打印设备信息与 LBA0 部分内容。
 - 关键点/易错：
@@ -106,4 +106,5 @@
   - U 系列样例通过 axstd/std 触发内核服务（打印、线程、驱动、VFS），不直接触达 CSR 与 sret。
 - 能力演进路径：
   - I/O（u_1_0）→ 堆（u_2_0）→ 设备内存直访（u_3_0/u_4_0）→ 协作/抢占并发（u_5_0/u_6_0）→ 块设备（u_7_0）→ 文件系统（u_8_0）。
+
 
